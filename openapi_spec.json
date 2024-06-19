@@ -1,0 +1,1356 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "bada-openstack-api",
+    "version": "0.1.0",
+    "description": "bada-openstack-api document"
+  },
+  "paths": {
+    "/api/healthcheck/": {
+      "get": {
+        "tags": [
+          "healthcheck"
+        ],
+        "summary": "Health Check",
+        "description": "perform health check\n1. db session\n2. openstack api",
+        "operationId": "health_check_api__get",
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login/": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "description": "login 성공시 토큰을 쿠키에 발급한다\n\n- 200\n\n- 400 : 필드 오류\n\n- 401 : 로그인 실패",
+        "operationId": "login_api_auth_login__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "로그인 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "로그인 성공"
+              }
+            }
+          },
+          "400": {
+            "description": "필드 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PydanticException"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                },
+                "example": {
+                  "error_type": "error",
+                  "message": "The request you have made requires authentication.",
+                  "detail": ""
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout/": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "description": "logout 성공시 쿠키에 저장된 토큰을 제거한다",
+        "operationId": "logout_api_auth_logout__post",
+        "responses": {
+          "200": {
+            "description": "로그아웃 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "로그아웃 성공"
+              }
+            }
+          },
+          "401": {
+            "description": "로그아웃 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                },
+                "example": {
+                  "error_type": "error",
+                  "message": "요청 헤더에 토큰이 존재하지 않습니다",
+                  "detail": ""
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/servers/": {
+      "get": {
+        "tags": [
+          "server"
+        ],
+        "summary": "get list of servers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "요청 페이지"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "한 페이지당 갯수"
+          },
+          {
+            "in": "query",
+            "name": "sort_by",
+            "schema": {
+              "type": "string"
+            },
+            "description": "정렬 필드명(name, created_at)"
+          },
+          {
+            "in": "query",
+            "name": "order_by",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "description": "정렬 조건"
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "description": "[eq/in/not]{value}"
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "schema": {
+              "type": "string"
+            },
+            "description": "[eq/like]{value}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ServerResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "server"
+        ],
+        "summary": "create server",
+        "description": "- 서버 이름은 자신이 소유한 다른 서버 이름과 중복해서 생성할 수 없다.\n- 사양은 사전에 제공받은 flavor 중 하나를 선택해서 생성한다.\n- 사전에 제공받은 네트워크와 서브넷을 선택해서 생성한다.\n- 루트볼륨을 생성해야 한다.\n  - 루트 볼륨 타입은 HDD 으로 고정한다.\n  - 이미지는 사전 제공받은 이미지 중 하나를 선택한다.\n- 보안 그룹은 기본 보안 그룹으로 설정한다.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "필드 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PydanticException"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict\n1. quota 부족(server / volume/ network)\n2. 이름 중복"
+          }
+        }
+      }
+    },
+    "/api/servers/{server_id}/": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "server_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "server uuid"
+        }
+      ],
+      "get": {
+        "tags": [
+          "server"
+        ],
+        "summary": "get specific server",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "server"
+        ],
+        "summary": "update specific server info (name & description)",
+        "description": "- 서버 이름과 설명을 변경할 수 있다.\n- 서버 이름은 자신이 소유한 다른 서버 이름과 중복할 수 없다",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "server"
+        ],
+        "summary": "delete specific server",
+        "description": "- 서버는 삭제 가능한 상태에서만 삭제할 수 있다.\n- 서버 삭제 시 네트워크 인터페이스는 자동으로 삭제한다.\n- 서버 삭제 시 루트 볼륨은 자동으로 삭제한다.\n- 서버 삭제 시 추가 볼륨은 연결 해제 한다.\n- 서버 삭제 시 플로팅 IP 는 연결 해제 한다.\n- 서버 삭제 시 보안 그룹은 연결 해제 한다",
+        "responses": {
+          "204": {
+            "description": "No-Content"
+          }
+        }
+      }
+    },
+    "/api/servers/{server_id}/status/": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "server_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "server uuid"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "server"
+        ],
+        "summary": "update server's status",
+        "description": "status can be\n- start\n- stop\n- hard_reboot\n- soft_reboot",
+        "responses": {
+          "202": {
+            "description": "accepted"
+          },
+          "400": {
+            "description": "필드 조건 오류"
+          },
+          "404": {
+            "description": "not found"
+          },
+          "409": {
+            "description": "conflict(불가능한 상태)"
+          }
+        }
+      }
+    },
+    "/api/servers/{server_id}/vnc/": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "server_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "server uuid"
+        }
+      ],
+      "get": {
+        "tags": [
+          "server"
+        ],
+        "summary": "get vnc connection url",
+        "description": "vnc 접속 url을 제공한다",
+        "responses": {
+          "200": {
+            "description": "return vnc url",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VncUrlResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/servers/{server_id}/volumes/": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "server_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "server uuid"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "server"
+        ],
+        "summary": "attach/detach volume",
+        "description": "생성된 volume을 서버에 연결(is_root=False인 볼륨)하거나 해제한다",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerUpdateVolumeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/volumes/": {
+      "get": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "get list of volumes",
+        "description": "조건에 해당하는 volume list를 반환한다",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VolumeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "create volume",
+        "description": "create volume",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VolumeCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/volumes/{volume_id}/": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "volume_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "volume uuid"
+        }
+      ],
+      "get": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "get specific volume",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "update specific volume's info(name, description)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VolumeUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "delete specific volume",
+        "description": "볼륨은 삭제 가능한 상태에서만 삭제할 수 있다.\n\n서버에 연결한 볼륨은 삭제할 수 없다.",
+        "responses": {
+          "204": {
+            "description": "No-content"
+          }
+        }
+      }
+    },
+    "/api/volumes/{volume_id}/size/": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "volume_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "volume uuid"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "update specific volume's size",
+        "description": "**need polling**\n\n해당 volume의 크기를 변경(상향만 가능)한다",
+        "responses": {
+          "202": {
+            "description": "accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "field error"
+          },
+          "409": {
+            "description": "하향 불가, 상태 불가"
+          }
+        }
+      }
+    },
+    "/api/floatingips/": {
+      "get": {
+        "tags": [
+          "floatingip"
+        ],
+        "summary": "get list of floating ips",
+        "description": "조건에 해당하는 floating ip list를 반환한다\n\n\n- 200\n- 400",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "요청 페이지"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "한 페이지당 갯수"
+          },
+          {
+            "in": "query",
+            "name": "sort_by",
+            "schema": {
+              "type": "string"
+            },
+            "description": "정렬 필드명"
+          },
+          {
+            "in": "query",
+            "name": "order_by",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "description": "정렬 조건"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FloatingipResponse"
+                  }
+                },
+                "example": [
+                  {
+                    "floatingip_id": "c668e19b-14af-4c11-bb47-7ae86fbae17e",
+                    "ip_address": "210.111.123.142",
+                    "description": "test floating ip description",
+                    "project_id": "e25641b6-f60a-4cab-9da8-a9729fdb66df",
+                    "status": "Active",
+                    "server": {
+                      "server_id": "34b835f0-9443-4d37-b08b-efca349f7716",
+                      "name": "test_server"
+                    },
+                    "created_at": "2024-02-20T05:42:13.618504",
+                    "updated_at": "2024-02-20T05:42:13.618504",
+                    "deleted_at": null
+                  },
+                  {
+                    "floatingip_id": "c668e19b-14af-4c11-bb47-7ae86fbae17e",
+                    "ip_address": "210.111.123.143",
+                    "description": "test floating ip description",
+                    "project_id": "e25641b6-f60a-4cab-9da8-a9729fdb66df",
+                    "status": "Active",
+                    "server": {
+                      "server_id": "34b835f0-9443-4d37-b08b-efca349f7716",
+                      "name": "test_server"
+                    },
+                    "created_at": "2024-02-20T05:42:13.618504",
+                    "updated_at": "2024-02-20T05:42:13.618504",
+                    "deleted_at": null
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "필드 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PydanticException"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "floatingip"
+        ],
+        "summary": "create floating ip",
+        "description": "\npublic network로부터 floating ip를 생성한다. \n\n- 201\n\n- 400 : 필드 조건 오류 (description.length > 255)\n\n- 404 : 해당 server 존재하지 않음\n\n- 409 : floating ip quota 초과, 이미 해당 서버에 floating ip 할당되어 있는 경우",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FloatingipCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloatingipResponse"
+                },
+                "example": {
+                  "floatingip_id": "c668e19b-14af-4c11-bb47-7ae86fbae17e",
+                  "ip_address": "210.111.123.142",
+                  "description": "test floating ip description",
+                  "project_id": "e25641b6-f60a-4cab-9da8-a9729fdb66df",
+                  "status": "Active",
+                  "server": {
+                    "server_id": "34b835f0-9443-4d37-b08b-efca349f7716",
+                    "name": "test_server"
+                  },
+                  "created_at": "2024-02-20T05:42:13.618504",
+                  "updated_at": "2024-02-20T05:42:13.618504",
+                  "deleted_at": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "필드 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PydanticException"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "port not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "잔여 floating ip 없음 / 이미 해당 서버는 연결되어 있음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/floatingips/{floatingip_id}/": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "floatingip_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "floatingip uuid"
+        }
+      ],
+      "get": {
+        "tags": [
+          "floatingip"
+        ],
+        "summary": "get specific floating ip",
+        "description": "해당하는 uuid의 floating ip를 반환한다\n\n- 200\n\n- 404 : 해당 floating ip가 존재하지 않음",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloatingipResponse"
+                },
+                "example": {
+                  "floatingip_id": "c668e19b-14af-4c11-bb47-7ae86fbae17e",
+                  "ip_address": "210.111.123.142",
+                  "description": "test floating ip description",
+                  "project_id": "e25641b6-f60a-4cab-9da8-a9729fdb66df",
+                  "status": "Active",
+                  "server": {
+                    "server_id": "34b835f0-9443-4d37-b08b-efca349f7716",
+                    "name": "test_server"
+                  },
+                  "created_at": "2024-02-20T05:42:13.618504",
+                  "updated_at": "2024-02-20T05:42:13.618504",
+                  "deleted_at": null
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "floatingip"
+        ],
+        "summary": "update specific floating ip's info (description)",
+        "description": "\n해당하는 uuid의 floating ip의 정보(description)를 수정한다\n\n- 200\n\n- 400 : 필드 조건 오류\n\n- 404 : 해당 floating ip가 존재하지 않음",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FloatingipUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloatingipResponse"
+                },
+                "example": {
+                  "floatingip_id": "c668e19b-14af-4c11-bb47-7ae86fbae17e",
+                  "ip_address": "210.111.123.142",
+                  "description": "test floating ip description",
+                  "project_id": "e25641b6-f60a-4cab-9da8-a9729fdb66df",
+                  "status": "Active",
+                  "server": {
+                    "server_id": "34b835f0-9443-4d37-b08b-efca349f7716",
+                    "name": "test_server"
+                  },
+                  "created_at": "2024-02-20T05:42:13.618504",
+                  "updated_at": "2024-02-20T05:42:13.618504",
+                  "deleted_at": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "필드 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PydanticException"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "floatingip"
+        ],
+        "summary": "delete specific floating ip",
+        "description": "해당하는 uuid의 floating ip를 삭제한다. 서버에 할당한 경우 삭제할 수 없다.\n\n- 204\n\n- 404 : 해당 floating ip가 존재하지 않음\n\n- 409 : 연결된 서버 있는 경우, 이미 floatingip 삭제된 경우",
+        "responses": {
+          "204": {
+            "description": "No-Content"
+          },
+          "404": {
+            "description": "not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/floatingips/{floatingip_id}/ports/": {
+      "patch": {
+        "tags": [
+          "floatingip"
+        ],
+        "summary": "attach/detach to port",
+        "description": "**need polling**\n\n해당하는 floatingip와 port를 연결하거나 해제(port_id == null)한다\n\n\n- 202\n\n- 400 : 필드 조건 오류\n\n- 404 : 해당하는 floatingip 없는 경우, portid 없는 경우\n\n- 409: 이미 floatingip 삭제된 경우, 해당 서버 불가능한 경우",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "floatingip_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FloatingipUpdatePortRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "success + status 추적 task실행",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloatingipResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "필드 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PydanticException"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "해당 서버를 찾을 수 없음. 해당 floatingip 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicException"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TokenCreateRequest": {
+        "title": "TokenCreateRequest",
+        "description": "사용자가 보낼 login request",
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ]
+      },
+      "PydanticException": {
+        "properties": {
+          "error_type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "detail": {
+            "properties": {
+              "input": {
+                "properties": {
+                  "field_name": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "loc": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "title": "PydanticException",
+        "description": "필드 조건 오류"
+      },
+      "BasicException": {
+        "properties": {
+          "error_type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "detail": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      "ServerCreateRequest": {
+        "title": "ServerCreateRequest",
+        "description": "서버 생성시 입력 dto",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "flavor_id": {
+            "type": "string"
+          },
+          "volume": {
+            "description": "생성할 루트 볼륨 정보",
+            "properties": {
+              "size": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "image_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "size",
+              "name",
+              "image_id"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "flavor_id",
+          "image_id",
+          "volume"
+        ]
+      },
+      "ServerUpdateRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerResponse": {
+        "properties": {
+          "server_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "flavor": {
+            "properties": {
+              "flavor_id": {
+                "type": "string"
+              },
+              "cpu": {
+                "type": "string"
+              },
+              "memory": {
+                "type": "integer"
+              }
+            }
+          },
+          "volumes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VolumeOverallResponse"
+            },
+            "description": "첫 생성시에는 할당되지 않을 수 있음"
+          },
+          "floatingip": {
+            "$ref": "#/components/schemas/FloatingipOverallResponse"
+          },
+          "securitygroup": {
+            "$ref": "#/components/schemas/SecurityGroupOverallResponse"
+          },
+          "network_id": {
+            "type": "string",
+            "description": "private network id"
+          },
+          "port_id": {
+            "type": "string",
+            "description": "첫 생성시에는 할당되지 않을 수 있음"
+          },
+          "fixed_address": {
+            "type": "string",
+            "description": "첫 생성시에는 할당되지 않을 수 있음"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "deleted_at": {
+            "type": "string"
+          }
+        }
+      },
+      "VncUrlResponse": {
+        "properties": {
+          "vnc_url": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerUpdateVolumeRequest": {
+        "properties": {
+          "volume_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "volume_id"
+        ]
+      },
+      "VolumeCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "size"
+        ]
+      },
+      "VolumeUpdateRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "VolumeResponse": {
+        "properties": {
+          "volume_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "is_root": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "server": {
+            "$ref": "#/components/schemas/ServerOverallResponse"
+          }
+        }
+      },
+      "FloatingipResponse": {
+        "properties": {
+          "floatingip_id": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "server": {
+            "$ref": "#/components/schemas/ServerOverallResponse"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "deleted_at": {
+            "type": "string"
+          }
+        }
+      },
+      "FloatingipCreateRequest": {
+        "properties": {
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "FloatingipUpdateRequest": {
+        "properties": {
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "FloatingipUpdatePortRequest": {
+        "properties": {
+          "port_id": {
+            "type": "string"
+          }
+        }
+      },
+      "FloatingipOverallResponse": {
+        "description": "연관된 floating ip 보여줄때",
+        "properties": {
+          "floatingip_id": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          }
+        }
+      },
+      "VolumeOverallResponse": {
+        "description": "연관된 볼륨 보여줄 때",
+        "properties": {
+          "volume_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "volume_type": {
+            "type": "string",
+            "default": "HDD"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "is_root_volume": {
+            "type": "boolean"
+          },
+          "image": {
+            "description": "volume source가 image인 경우",
+            "properties": {
+              "image_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "SecurityGroupOverallResponse": {
+        "description": "연관된 보안 그룹 보여줄 때",
+        "properties": {
+          "securitygroup_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerOverallResponse": {
+        "description": "연관된 서버 보여줄 때",
+        "properties": {
+          "server_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+.env
+__pycache__
+app.log
+app.log.*
+mysql-volume
+.DS_Store
